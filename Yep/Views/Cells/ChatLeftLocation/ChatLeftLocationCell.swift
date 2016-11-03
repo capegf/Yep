@@ -7,19 +7,35 @@
 //
 
 import UIKit
+import YepKit
 
-class ChatLeftLocationCell: ChatBaseCell {
+final class ChatLeftLocationCell: ChatBaseCell {
 
-    @IBOutlet weak var mapImageView: UIImageView!
-    @IBOutlet weak var locationNameLabel: UILabel!
-    @IBOutlet weak var borderImageView: UIImageView!
+    static private let mapSize = CGSize(width: 192, height: 108)
+
+    lazy var mapImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.tintColor = UIColor.leftBubbleTintColor()
+        return imageView
+    }()
+
+    lazy var locationNameLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = UIColor.whiteColor()
+        label.font = UIFont.systemFontOfSize(12)
+        label.textAlignment = .Center
+        return label
+    }()
+
+    lazy var borderImageView: UIImageView = {
+        let imageView = UIImageView(image: UIImage.yep_leftTailImageBubbleBorder)
+        return imageView
+    }()
 
     typealias MediaTapAction = () -> Void
     var mediaTapAction: MediaTapAction?
 
     func makeUI() {
-
-        //let fullWidth = UIScreen.mainScreen().bounds.width
 
         let halfAvatarSize = YepConfig.chatCellAvatarSize() / 2
         
@@ -40,35 +56,39 @@ class ChatLeftLocationCell: ChatBaseCell {
         let locationNameLabelHeight = YepConfig.ChatCell.locationNameLabelHeight
         
         locationNameLabel.frame = CGRect(x: CGRectGetMinX(mapImageView.frame) + 20 + 7, y: CGRectGetMaxY(mapImageView.frame) - locationNameLabelHeight, width: 192 - 20 * 2 - 7, height: locationNameLabelHeight)
-        //locationNameLabel.backgroundColor = UIColor.redColor().colorWithAlphaComponent(0.1)
 
         configureNameLabel()
     }
 
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        contentView.addSubview(mapImageView)
+        contentView.addSubview(locationNameLabel)
+        contentView.addSubview(borderImageView)
+
         UIView.performWithoutAnimation { [weak self] in
             self?.makeUI()
         }
 
-        mapImageView.tintColor = UIColor.leftBubbleTintColor()
-        locationNameLabel.textColor = UIColor.whiteColor()
-
         mapImageView.userInteractionEnabled = true
-        let tap = UITapGestureRecognizer(target: self, action: "tapMediaView")
+        let tap = UITapGestureRecognizer(target: self, action: #selector(ChatLeftLocationCell.tapMediaView))
         mapImageView.addGestureRecognizer(tap)
-        
+
         prepareForMenuAction = { otherGesturesEnabled in
             tap.enabled = otherGesturesEnabled
         }
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     func tapMediaView() {
         mediaTapAction?()
     }
     
-    func configureWithMessage(message: Message, mediaTapAction: MediaTapAction?, collectionView: UICollectionView, indexPath: NSIndexPath) {
+    func configureWithMessage(message: Message, mediaTapAction: MediaTapAction?) {
 
         self.user = message.fromFriend
 
@@ -79,39 +99,21 @@ class ChatLeftLocationCell: ChatBaseCell {
         }
 
         if let sender = message.fromFriend {
-            let userAvatar = UserAvatar(userID: sender.userID, avatarStyle: nanoAvatarStyle)
+            let userAvatar = UserAvatar(userID: sender.userID, avatarURLString: sender.avatarURLString, avatarStyle: nanoAvatarStyle)
             avatarImageView.navi_setAvatar(userAvatar, withFadeTransitionDuration: avatarFadeTransitionDuration)
         }
 
         let locationName = message.textContent
 
         locationNameLabel.text = locationName
-        
-        var shouldAdd = false
-        for view in subviews {
-            if view.isKindOfClass(UILabel) {
-                shouldAdd = true
-                break
-            }
-        }
-        
-        if shouldAdd {
-            addSubview(locationNameLabel)
-        }
 
-        ImageCache.sharedInstance.mapImageOfMessage(message, withSize: CGSize(width: 192, height: 108), tailDirection: .Left, bottomShadowEnabled: !locationName.isEmpty) { mapImage in
-            dispatch_async(dispatch_get_main_queue()) {
-                if let _ = collectionView.cellForItemAtIndexPath(indexPath) {
-                    self.mapImageView.image = mapImage
-                }
-            }
-        }
+        mapImageView.yep_setMapImageOfMessage(message, withSize: ChatLeftLocationCell.mapSize, tailDirection: .Left)
     }
     
     private func configureNameLabel() {
 
         if inGroup {
-            nameLabel.text = user?.nickname
+            nameLabel.text = user?.compositedName
 
             let height = YepConfig.ChatCell.nameLabelHeightForGroup
             let x = CGRectGetMaxX(avatarImageView.frame) + YepConfig.chatCellGapBetweenTextContentLabelAndAvatar()

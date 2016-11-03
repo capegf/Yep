@@ -8,11 +8,12 @@
 
 import UIKit
 import CoreLocation
+import YepKit
 import FXBlurView
 import Proposer
 import Navi
 
-class ProfileHeaderCell: UICollectionViewCell {
+final class ProfileHeaderCell: UICollectionViewCell {
 
     @IBOutlet weak var avatarImageView: UIImageView!
     @IBOutlet weak var avatarBlurImageView: UIImageView!
@@ -28,6 +29,8 @@ class ProfileHeaderCell: UICollectionViewCell {
 
     override func awakeFromNib() {
         super.awakeFromNib()
+
+        locationLabel.hidden = true
     }
 
     var blurredAvatarImage: UIImage? {
@@ -36,6 +39,7 @@ class ProfileHeaderCell: UICollectionViewCell {
         }
     }
 
+    /*
     var location: CLLocation? {
         didSet {
             if let location = location {
@@ -52,7 +56,7 @@ class ProfileHeaderCell: UICollectionViewCell {
 
                 CLGeocoder().reverseGeocodeLocation(location, completionHandler: { (placemarks, error) in
 
-                    dispatch_async(dispatch_get_main_queue()) { [weak self] in
+                    SafeDispatch.async { [weak self] in
                         if (error != nil) {
                             println("\(location) reverse geodcode fail: \(error?.localizedDescription)")
                             self?.location = nil
@@ -68,17 +72,19 @@ class ProfileHeaderCell: UICollectionViewCell {
             }
         }
     }
+    */
 
     func configureWithDiscoveredUser(discoveredUser: DiscoveredUser) {
         updateAvatarWithAvatarURLString(discoveredUser.avatarURLString)
 
-        location = CLLocation(latitude: discoveredUser.latitude, longitude: discoveredUser.longitude)
+        //location = CLLocation(latitude: discoveredUser.latitude, longitude: discoveredUser.longitude)
     }
 
     func configureWithUser(user: User) {
 
         updateAvatarWithAvatarURLString(user.avatarURLString)
 
+        /*
         if user.friendState == UserFriendState.Me.rawValue {
 
             if !askedForPermission {
@@ -101,6 +107,7 @@ class ProfileHeaderCell: UICollectionViewCell {
         }
 
         location = CLLocation(latitude: user.latitude, longitude: user.longitude)
+        */
     }
 
     func blurImage(image: UIImage, completion: UIImage -> Void) {
@@ -130,13 +137,13 @@ class ProfileHeaderCell: UICollectionViewCell {
 
             if finished {
                 self?.blurImage(image) { blurredImage in
-                    dispatch_async(dispatch_get_main_queue()) {
+                    SafeDispatch.async {
                         self?.blurredAvatarImage = blurredImage
                     }
                 }
             }
 
-            dispatch_async(dispatch_get_main_queue()) {
+            SafeDispatch.async {
                 self?.avatarImageView.image = image
 
                 let avatarAvarageColor = image.yep_avarageColor
@@ -145,10 +152,9 @@ class ProfileHeaderCell: UICollectionViewCell {
 
                 self?.updatePrettyColorAction?(prettyColor)
 
-                UIView.animateWithDuration(0.2, delay: 0.0, options: .CurveEaseOut, animations: { () -> Void in
+                UIView.animateWithDuration(0.2, delay: 0.0, options: .CurveEaseOut, animations: { [weak self] in
                     self?.avatarImageView.alpha = 1
-                }, completion: { (finished) -> Void in
-                })
+                }, completion: nil)
             }
         }
     }

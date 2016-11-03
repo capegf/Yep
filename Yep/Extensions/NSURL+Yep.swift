@@ -7,8 +7,7 @@
 //
 
 import Foundation
-
-private let yepHost = "soyep.com"
+import YepKit
 
 extension NSURL {
 
@@ -27,7 +26,7 @@ extension NSURL {
         return (allQueryItems as NSArray).filteredArrayUsingPredicate(predicate).first as? NSURLQueryItem
     }
     
-    func yep_matchSharedFeed(completion: DiscoveredFeed -> Void) -> Bool {
+    func yep_matchSharedFeed(completion: (feed: DiscoveredFeed?) -> Void) -> Bool {
 
         guard let host = host where host == yepHost else {
             return false
@@ -37,21 +36,25 @@ extension NSURL {
             return false
         }
 
-        if let first = pathComponents[safe: 1] where first == "groups" {
-            if let second = pathComponents[safe: 2] where second == "share" {
-                if let sharedToken = queryItemForKey("token")?.value {
-                    feedWithSharedToken(sharedToken, failureHandler: nil, completion: { feed in
-                        dispatch_async(dispatch_get_main_queue()) {
-                            completion(feed)
-                        }
-                    })
-
-                    return true
-                }
-            }
+        guard
+            let first = pathComponents[safe: 1] where first == "groups",
+            let second = pathComponents[safe: 2] where second == "share",
+            let sharedToken = queryItemForKey("token")?.value else {
+                return false
         }
 
-        return false
+        feedWithSharedToken(sharedToken, failureHandler: { reason, errorMessage in
+            SafeDispatch.async {
+                completion(feed: nil)
+            }
+
+        }, completion: { feed in
+            SafeDispatch.async {
+                completion(feed: feed)
+            }
+        })
+
+        return true
     }
 
     // make sure put it in last
@@ -70,7 +73,7 @@ extension NSURL {
 
             discoverUserByUsername(username, failureHandler: nil, completion: { discoveredUser in
 
-                dispatch_async(dispatch_get_main_queue()) {
+                SafeDispatch.async {
                     completion(discoveredUser)
                 }
             })
@@ -80,21 +83,40 @@ extension NSURL {
 
         return false
     }
+}
 
-    // iTunes
+extension NSURL {
 
-    var yep_iTunesArtworkID: String? {
+    var yep_isNetworkURL: Bool {
 
-        if let artworkID = queryItemForKey("i")?.value {
-            return artworkID
+        switch scheme {
+        case "http", "https":
+            return true
+        default:
+            return false
+        }
+    }
+
+    var yep_validSchemeNetworkURL: NSURL? {
+
+        if scheme.isEmpty {
+
+            guard let URLComponents = NSURLComponents(URL: self, resolvingAgainstBaseURL: false) else {
+                return nil
+            }
+
+            URLComponents.scheme = "http"
+
+            return URLComponents.URL
 
         } else {
-            if let artworkID = lastPathComponent?.stringByReplacingOccurrencesOfString("id", withString: "") {
-                return artworkID
+            if yep_isNetworkURL {
+                return self
+
+            } else {
+                return nil
             }
         }
-
-        return nil
     }
 }
 

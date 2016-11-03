@@ -8,12 +8,30 @@
 
 import UIKit
 import MapKit
+import YepKit
 
-class ChatRightLocationCell: ChatRightBaseCell {
+final class ChatRightLocationCell: ChatRightBaseCell {
 
-    @IBOutlet weak var mapImageView: UIImageView!
-    @IBOutlet weak var locationNameLabel: UILabel!
-    @IBOutlet weak var borderImageView: UIImageView!
+    static private let mapSize = CGSize(width: 192, height: 108)
+
+    lazy var mapImageView: UIImageView = {
+        let imageView = UIImageView()
+        imageView.tintColor = UIColor.rightBubbleTintColor()
+        return imageView
+    }()
+
+    lazy var locationNameLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = UIColor.whiteColor()
+        label.font = UIFont.systemFontOfSize(12)
+        label.textAlignment = .Center
+        return label
+    }()
+
+    lazy var borderImageView: UIImageView = {
+        let imageView = UIImageView(image: UIImage.yep_rightTailImageBubbleBorder)
+        return imageView
+    }()
 
     typealias MediaTapAction = () -> Void
     var mediaTapAction: MediaTapAction?
@@ -34,33 +52,37 @@ class ChatRightLocationCell: ChatRightBaseCell {
 
         let locationNameLabelHeight = YepConfig.ChatCell.locationNameLabelHeight
         locationNameLabel.frame = CGRect(x: CGRectGetMinX(mapImageView.frame) + 20, y: CGRectGetMaxY(mapImageView.frame) - locationNameLabelHeight, width: 192 - 20 * 2 - 7, height: locationNameLabelHeight)
-        //locationNameLabel.backgroundColor = UIColor.redColor().colorWithAlphaComponent(0.1)
     }
 
-    override func awakeFromNib() {
-        super.awakeFromNib()
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        contentView.addSubview(mapImageView)
+        contentView.addSubview(locationNameLabel)
+        contentView.addSubview(borderImageView)
 
         UIView.performWithoutAnimation { [weak self] in
             self?.makeUI()
         }
 
-        mapImageView.tintColor = UIColor.rightBubbleTintColor()
-        locationNameLabel.textColor = UIColor.whiteColor()
-
         mapImageView.userInteractionEnabled = true
-        let tap = UITapGestureRecognizer(target: self, action: "tapMediaView")
+        let tap = UITapGestureRecognizer(target: self, action: #selector(ChatRightLocationCell.tapMediaView))
         mapImageView.addGestureRecognizer(tap)
-        
+
         prepareForMenuAction = { otherGesturesEnabled in
             tap.enabled = otherGesturesEnabled
         }
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
     }
 
     func tapMediaView() {
         mediaTapAction?()
     }
 
-    func configureWithMessage(message: Message, mediaTapAction: MediaTapAction?, collectionView: UICollectionView, indexPath: NSIndexPath) {
+    func configureWithMessage(message: Message, mediaTapAction: MediaTapAction?) {
 
         self.message = message
         self.user = message.fromFriend
@@ -72,7 +94,7 @@ class ChatRightLocationCell: ChatRightBaseCell {
         }
 
         if let sender = message.fromFriend {
-            let userAvatar = UserAvatar(userID: sender.userID, avatarStyle: nanoAvatarStyle)
+            let userAvatar = UserAvatar(userID: sender.userID, avatarURLString: sender.avatarURLString, avatarStyle: nanoAvatarStyle)
             avatarImageView.navi_setAvatar(userAvatar, withFadeTransitionDuration: avatarFadeTransitionDuration)
         }
 
@@ -80,13 +102,7 @@ class ChatRightLocationCell: ChatRightBaseCell {
         
         locationNameLabel.text = locationName
 
-        ImageCache.sharedInstance.mapImageOfMessage(message, withSize: CGSize(width: 192, height: 108), tailDirection: .Right, bottomShadowEnabled: !locationName.isEmpty) { mapImage in
-            dispatch_async(dispatch_get_main_queue()) {
-                if let _ = collectionView.cellForItemAtIndexPath(indexPath) {
-                    self.mapImageView.image = mapImage
-                }
-            }
-        }
+        mapImageView.yep_setMapImageOfMessage(message, withSize: ChatRightLocationCell.mapSize, tailDirection: .Right)
     }
 }
 
